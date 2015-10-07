@@ -18,12 +18,15 @@
 #ifndef LCD16X2_H_
 #define LCD16X2_H_
 
+
+#include "common.h"
+
 /************************************************************************/
 /* Type Definitions			                                                                  */
 /************************************************************************/
 typedef enum{LEFT, RIGHT} Direction;
 typedef enum{INCREMENT, DECREMENT} CursorDirection;	
-typedef enum{DATA_REGISTER, INTRUCTION_REGISTER} RegType;
+typedef enum{DATA_REGISTER, INSTRUCTION_REGISTER} RegType;
 typedef enum{FOUR_BIT, EIGHT_BIT } DataLength;
 typedef enum{ONE_LINE, TWO_LINES} Lines;
 typedef enum{FONT5x8, FONT5x10} Font;	
@@ -31,24 +34,31 @@ typedef enum{FONT5x8, FONT5x10} Font;
 /************************************************************************/
 /* API					                                                                  */
 /************************************************************************/
-void InitializeLcd(uint8_t* dataregister, uint8_t* rs, uint8_t* rw);
+void InitializeLcd(BYTE* dataregister,
+				   BYTE* directionregister,
+				   BYTE* rsPort,
+				   BYTE rsPin,
+				   BYTE* rwPort,
+				   BYTE rwPin,
+				   BYTE* enablePort,
+				   BYTE enablePin);
 
-
+void WriteNewLine(void);
 
 /************************************************************************/
 /* Control and Display Instructions API                                                      */
 /************************************************************************/
 
-void ClearDisplay();
-void ReturnHome();
+void ClearDisplay(void);
+void ReturnHome(void);
 void SetEntryMode(CursorDirection direction, BOOL shift);
 void DisplayOnOffControl(BOOL displayOn, BOOL cursorOn, BOOL blinkOn);
 void CursorShift(Direction cursorDirection, Direction displayDirection);
 void FunctionSet(DataLength length, Lines lines, Font font);
 void SetCharacterGeneratorAddress(BYTE address);
 void SetDisplayDataAddress(BYTE address);
-BYTE ReadAddressCounter();
-BOOL IsBusy();
+BYTE ReadAddressCounter(void);
+BOOL IsBusy(void);
 
 
 /************************************************************************/
@@ -59,7 +69,8 @@ void WriteDataReg(BYTE dataToWrite);
 void WriteInstructionReg(BYTE dataToWrite);
 void WriteLcd(BYTE dataToWrite, RegType regType);
 
-BYTE ReadInstructionReg(BYTE address);
+BYTE ReadInstructionReg(void);
 BYTE ReadDataReg(BYTE address);
+BYTE ReadLcd(RegType regType);
 
 #endif /* LCD16X2_H_ */

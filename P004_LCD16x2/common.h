@@ -40,9 +40,9 @@ struct ControlPin
 /************************************************************************/
 /* Macros				                                                                  */
 /************************************************************************/
-#define SET_BIT(y, mask)        ( y |=  (mask) )
-#define CLEAR_BIT(y, mask)      ( y &= ~(mask) )
-#define FLIP_BIT(y, mask)       ( y ^=  (mask) )
+#define SET_BIT(y, mask)        ( *y |=  (mask) )
+#define CLEAR_BIT(y, mask)      ( *y &= ~(mask) )
+#define FLIP_BIT(y, mask)       ( *y ^=  (mask) )
 
 
 /************************************************************************/

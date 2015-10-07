@@ -21,14 +21,15 @@
 #include <avr/io.h>
 #include "util/delay.h"
 #include "lcd16x2.h"
-#include "common.h"
 
 /************************************************************************/
 /* Defines				                                                                  */
 /************************************************************************/
 #define CLEAR_LCD		0b00000001
 #define RETURN_HOME		0b00000010
-
+#define LINE1			1
+#define LINE2			2
+#define CLEAR_CHAR		0x20
 
 
 /************************************************************************/
@@ -37,9 +38,10 @@
 struct Lcd16x2
 {	
 	volatile uint8_t* dataregister;
-	ControlPin rs;
-	ControlPin rw;
-	ControlPin enable;
+	volatile uint8_t* directionregister;
+	struct ControlPin rs;
+	struct ControlPin rw;
+	struct ControlPin enable;
 	BOOL initialized;
 } lcd;
 
@@ -48,6 +50,53 @@ struct Lcd16x2
 /* Functions				                                                                  */
 /************************************************************************/	
 
+void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE fieldsToClear)
+{
+	/* Check if the line is smaller then 2 and the position smaller then 17 */
+	if(!(line > 2 || pos > 16))
+	{
+		/* Check if we can write to the position, we dont use shift so maximum length of a line is 16 */
+		/* If we want to write to position 10 then we can write 7 characters, so the string should not be greater then 7 characters */
+		if((16 - pos + 1) < sizeof(string))
+		{
+			/* First clear the characters, from position till number of fieldsToClear */
+			for(int i = pos; pos < (pos + fieldsToClear); pos++)
+				
+		}
+	}
+}
+
+void ClearCharacter(BYTE line, BYTE pos)
+{
+	/* Check if the line is smaller then 2 and the position smaller then 17 */
+	if(!(line > 2 || pos > 16))
+	{
+		/* Set line mask, bit 6 is 0 for line 1 and 1 for line 2 */
+		BYTE address = (line-1) << 6;
+		
+		/* Add position to address */
+		address += pos;
+		
+		/* Set the address to write to */
+		SetDisplayDataAddress(address);
+		
+		/* Clear the character at the set address  */
+		WriteDataReg(CLEAR_CHAR);
+	}
+}
+void WriteNewLine(char* string, BYTE line)
+{
+	char string[5] = {'H','E','L','L','O'};
+	ClearDisplay();
+	ReturnHome();
+	_delay_ms(1000);
+	
+	for(int i = 0; i< sizeof(string); i++)
+	{
+		WriteDataReg(string[i]);
+		_delay_us(50);
+	}
+}
 /***************************************************************************
 *  Function:		InitializeLcd(BYTE* dataregister,
 						   BYTE* rsPort,
@@ -68,6 +117,7 @@ struct Lcd16x2
 *  Returns:		Nothing
 ***************************************************************************/
 void InitializeLcd(BYTE* dataregister, 
+				   BYTE* directionregister, 	
 				   BYTE* rsPort, 
 				   BYTE rsPin,
 				   BYTE* rwPort,
@@ -76,6 +126,7 @@ void InitializeLcd(BYTE* dataregister,
 				   BYTE enablePin)
 {
 	lcd.dataregister = dataregister;
+	lcd.directionregister = directionregister;
 	lcd.rs.port = rsPort;
 	lcd.rs.pin = rsPin;
 	lcd.rw.port = rwPort;
@@ -95,7 +146,7 @@ void InitializeLcd(BYTE* dataregister,
 /*********************************************************************************************/
 
 /***************************************************************************
-*  Function:		WriteLcd(BYTE dataToWrite)
+*  Function:		WriteLcd(BYTE dataToWrite, RegType regType)
 *  Description:		Writes the given byte to the instruction register.
 *  Receives:		BYTE dataToWrite			:	Byte to write.
 				RegisterType registerType	:	Type of register to write to.
@@ -105,8 +156,11 @@ void WriteLcd(BYTE dataToWrite, RegType regType)
 {
 	if(lcd.initialized)
 	{
+		/* Set the port as output */
+		*lcd.directionregister = 0b11111111;
+		
 		/* Determine register to write to */
-		if(regType == INTRUCTION_REGISTER)
+		if(regType == INSTRUCTION_REGISTER)
 		{
 			CLEAR_BIT(lcd.rs.port, lcd.rs.pin);
 		}
@@ -123,7 +177,7 @@ void WriteLcd(BYTE dataToWrite, RegType regType)
 		SET_BIT(lcd.enable.port, lcd.enable.pin);
 		
 		/* Set data to write */
-		lcd.dataregister = 	dataToWrite;
+		*lcd.dataregister = dataToWrite;
 		
 		/* Wait at least 230 ns (E pulse Width tpw) */
 		_delay_us(1);
@@ -131,7 +185,9 @@ void WriteLcd(BYTE dataToWrite, RegType regType)
 		/* Disable LCD */
 		CLEAR_BIT(lcd.enable.port, lcd.enable.pin);
 		
-		/* Because we already waited 1 us, we can ignore address and Data Hold Time (10 ns each) */
+		/* Wait at least 10 ns (Address Hold Time thd) */
+		_delay_us(1);
+		
 		/* Reset to reading */
 		SET_BIT(lcd.rw.port, lcd.rw.pin);
 	}
@@ -145,7 +201,7 @@ void WriteLcd(BYTE dataToWrite, RegType regType)
 ***************************************************************************/
 void WriteInstructionReg(BYTE dataToWrite)
 {
-	WriteLcd(dataToWrite, INTRUCTION_REGISTER);	
+	WriteLcd(dataToWrite, INSTRUCTION_REGISTER);	
 }
 
 /***************************************************************************
@@ -159,25 +215,65 @@ void WriteDataReg(BYTE dataToWrite)
 	WriteLcd(dataToWrite, DATA_REGISTER);	
 }
 
-
-BYTE ReadLcd(BYTE address, RegType regType)
+/***************************************************************************
+*  Function:		ReadLcd(RegType regType)
+*  Description:		Reads the LCD display instruction or data register, in the later
+				case the calling function should first set the address to read. 
+*  Receives:		RegType regType	:	Type of register to read from.
+*  Returns:		Nothing
+***************************************************************************/
+BYTE ReadLcd(RegType regType)
 {
+	BYTE dataRead = 0;
 	
+	if(lcd.initialized == TRUE)
+	{
+		/* First set the port as input */
+		*lcd.directionregister = 0b00000000;
+	
+		/* Determine register to read from */
+		if(regType == INSTRUCTION_REGISTER)
+		{
+			CLEAR_BIT(lcd.rs.port, lcd.rs.pin);
+		}
+		else
+		{
+			SET_BIT(lcd.rs.port, lcd.rs.pin);
+		}
+	
+		/* Set to read */
+		SET_BIT(lcd.rw.port, lcd.rw.pin);
+	
+		/* Wait at least 40 ns (Address Setup Time tsp1) */
+		_delay_us(1);
+		SET_BIT(lcd.enable.port, lcd.enable.pin);
+	
+		/* Wait at least 150 ns (Data output delay time td) */
+		_delay_us(1);
+		
+		/* Read data */
+		dataRead = *lcd.dataregister;
+	
+		/* Disable LCD */
+		CLEAR_BIT(lcd.enable.port, lcd.enable.pin);
+	
+		/* Wait at least 10 ns (Address Hold Time thd) */
+		_delay_us(1);
+	
+	}
+	return dataRead;
 }
 
 /***************************************************************************
 *  Function:		ReadInstructionReg()
-*  Description:		Reads the instruction register from the given address.
-*  Receives:		BYTE address		:	Address to read from.
+*  Description:		Reads the instruction register.
+*  Receives:		Nothing
 *  Returns:		The byte that is read.
 ***************************************************************************/
-BYTE ReadInstructionReg(BYTE address)
+BYTE ReadInstructionReg(void)
 {
-	/* First set the CGRAM address to read from */
-	SetCharacterGeneratorAddress(address);
-	
 	/* Read from the address and return the byte thats read */
-	return ReadLcd(INTRUCTION_REGISTER);
+	return ReadLcd(INSTRUCTION_REGISTER);
 }
 
 /***************************************************************************
@@ -202,7 +298,7 @@ BYTE ReadDataReg(BYTE address)
 *  Receives:		Nothing
 *  Returns:		Nothing
 ***************************************************************************/
-void ClearDisplay()
+void ClearDisplay(void)
 {
 	WriteInstructionReg(CLEAR_LCD);
 }
@@ -213,7 +309,7 @@ void ClearDisplay()
 *  Receives:		Nothing
 *  Returns:		Nothing
 ***************************************************************************/
-void ReturnHome()
+void ReturnHome(void)
 {
 	WriteInstructionReg(RETURN_HOME);
 }
@@ -229,7 +325,7 @@ void ReturnHome()
 void SetEntryMode(CursorDirection direction, BOOL shift)
 {
 	/* Create data byte */
-	BYTE dataToWrite = 0b00001000;
+	BYTE dataToWrite = 0b00000100;
 	
 	if(direction == INCREMENT)
 		dataToWrite |= 0b00000010;
@@ -267,9 +363,8 @@ void DisplayOnOffControl(BOOL displayOn, BOOL cursorOn, BOOL blinkOn)
 /***************************************************************************
 *  Function:		CursorShift()
 *  Description:		Shifts the cursor and or display, without changing the DDRAM data.
-*  Receives:		BOOL displayOn	:	True when the display should be set ON
-				BOOL cursorOn	:	True when the cursor should be set ON
-				BOOL blinkOn		:	True when the cursor should blink.
+*  Receives:		Direction	cursorDirection	:	The direction the cursor should shift (left or right)
+				Direction displayDirection	:	The direction the display should shift (left or right)
 *  Returns:		Nothing
 ***************************************************************************/
 void CursorShift(Direction cursorDirection, Direction displayDirection)
@@ -302,11 +397,11 @@ void FunctionSet(DataLength length, Lines lines, Font font)
 	
 	if(length == EIGHT_BIT)
 		dataToWrite |= 0b00010000;
-	if(Lines == TWO_LINES)
+	if(lines == TWO_LINES)
 		dataToWrite |= 0b00001000;
 	/* The display cant display two lines with font 5x10 dots */
-	if(Lines != TWO_LINES && Font == FONT5x10)
-		dataToWrite |= ob00000100;
+	if(lines != TWO_LINES && font == FONT5x10)
+		dataToWrite |= 0b00000100;
 		
 	WriteInstructionReg(dataToWrite);
 }
@@ -357,7 +452,7 @@ void SetDisplayDataAddress(BYTE address)
 *  Receives:		Nothing
 *  Returns:		Address counter address.
 ***************************************************************************/
-BYTE ReadAddressCounter()
+BYTE ReadAddressCounter(void)
 {
 	/* Read address and ignore bit 7 by masking it out */
 	BYTE address = ReadInstructionReg() && 0x7F;
@@ -371,13 +466,13 @@ BYTE ReadAddressCounter()
 *  Receives:		Nothing
 *  Returns:		Address counter address.
 ***************************************************************************/
-BOOL IsBusy()
+BOOL IsBusy(void)
 {
 	BYTE data = ReadInstructionReg();
 	BOOL isBusy = TRUE;
 	
 	/* Check if bit 7 is 0, then we return FALSE */
-	if((data >> 7) && 0x01 == FALSE)
+	if((data >> 7) & 0x01 == 0)
 		isBusy = FALSE; 
 		
 	return isBusy;

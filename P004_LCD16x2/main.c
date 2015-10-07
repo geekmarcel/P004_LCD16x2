@@ -20,12 +20,11 @@
 #include <avr/io.h>
 #include "util/delay.h"
 #include "lcd16x2.h"
+#include "common.h"
 
 /************************************************************************/
 /* Defines				                                                                  */
 /************************************************************************/
-#define	BYTE	unsigned char
-#define	BOOL	unsigned char
 
 
 /***************************************************************************
@@ -55,9 +54,35 @@ void Setup()
 int main(void)
 {
 	Setup();
-	InitializeLcd(PORTD, PORTB0)
+	InitializeLcd(
+		&PORTD, 
+		&DDRD,
+		&PORTB,
+		PORTB0 + 1,
+		&PORTB,
+		PORTB1 + 1,
+		&PORTB,
+		PORTB2 + 2);
+	
+	/* LCD Startup delay */
+	_delay_ms(20);
+	
+	/* Startup routine, mandatory sequence with delays (see datasheet) */
+	FunctionSet(EIGHT_BIT, TWO_LINES, FONT5x8);
+	_delay_ms(5);
+	FunctionSet(EIGHT_BIT, TWO_LINES, FONT5x8);
+	_delay_us(100);
+	
+	/* Setup display */
+	DisplayOnOffControl(TRUE, TRUE, TRUE);
+	SetEntryMode(INCREMENT, FALSE);
+
     while(1)
-    {
+    {	
+		WriteNewLine();
+		
+		_delay_ms(500);
+		
         //TODO:: Please write your application code 
     }
 }
