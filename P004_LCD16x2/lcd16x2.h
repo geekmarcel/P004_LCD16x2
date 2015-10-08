@@ -22,6 +22,12 @@
 #include "common.h"
 
 /************************************************************************/
+/* Defines				                                                                  */
+/************************************************************************/
+#define LINE1			1
+#define LINE2			2
+
+/************************************************************************/
 /* Type Definitions			                                                                  */
 /************************************************************************/
 typedef enum{LEFT, RIGHT} Direction;
@@ -43,7 +49,9 @@ void InitializeLcd(BYTE* dataregister,
 				   BYTE* enablePort,
 				   BYTE enablePin);
 
-void WriteNewLine(void);
+void WriteNewLine(char* string, BYTE line);
+void ClearCharacter(BYTE line, BYTE pos);
+void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE fieldsToClear);
 
 /************************************************************************/
 /* Control and Display Instructions API                                                      */

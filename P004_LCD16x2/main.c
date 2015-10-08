@@ -77,12 +77,31 @@ int main(void)
 	DisplayOnOffControl(TRUE, TRUE, TRUE);
 	SetEntryMode(INCREMENT, FALSE);
 
+	/* Test writing string first line */
+	WriteNewLine("Dit is een test1", LINE1);
+	_delay_ms(2000);
+	WriteNewLine("Dit is een test2", LINE2);
+	_delay_ms(2000);
+	
+	WriteNewLine("Test2 Line 1", LINE1);
+	_delay_ms(2000);
+	WriteNewLine("Test2 Line 2", LINE2);
+	_delay_ms(2000);
+	
+	WriteNewLine("Temp: 25 deg.", LINE1);
+	_delay_ms(500);
+	WriteToPosition("35 deg.", LINE1, 6, 7);
+	_delay_ms(500);
+	WriteToPosition("45 deg.", LINE1, 6, 7);
+	_delay_ms(500);
+	WriteToPosition("5 deg.", LINE1, 6, 7);
+	_delay_ms(500);
+	WriteToPosition("-1 deg.", LINE1, 6, 7);
+	_delay_ms(500);
+	WriteToPosition("99 deg.", LINE1, 6, 7);
+	
+	
     while(1)
     {	
-		WriteNewLine();
-		
-		_delay_ms(500);
-		
-        //TODO:: Please write your application code 
     }
 }

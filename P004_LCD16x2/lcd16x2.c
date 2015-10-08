@@ -21,14 +21,12 @@
 #include <avr/io.h>
 #include "util/delay.h"
 #include "lcd16x2.h"
-
+#include "string.h"
 /************************************************************************/
 /* Defines				                                                                  */
 /************************************************************************/
 #define CLEAR_LCD		0b00000001
 #define RETURN_HOME		0b00000010
-#define LINE1			1
-#define LINE2			2
 #define CLEAR_CHAR		0x20
 
 
@@ -61,16 +59,42 @@ void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE fieldsToClear)
 		{
 			/* First clear the characters, from position till number of fieldsToClear */
 			for(int i = pos; pos < (pos + fieldsToClear); pos++)
-				
+			{
+				ClearCharacter(line, pos + i);	
+			}
+			
+			/* Calculate start address */
+			BYTE address = (line-1) << 6;
+			address += pos;
+			
+			/* Now put cursor back to position */
+			SetDisplayDataAddress(address);
+			
+			/* Write characters */
+			for(int i = 0; i < strlen(string); i++)
+			{
+				WriteDataReg(string[i]);
+			}
+
 		}
 	}
 }
 
+/***************************************************************************
+*  Function:		ClearCharacter(BYTE line, BYTE pos)
+*  Description:		Clears the character on the given line and position.
+				This is done by writing 0x20 to the character.
+*  Receives:		BYTE line			:	The line to write to.
+				BYTE pos			:	The position on the line (zero-based)
+*  Returns:		Nothing
+***************************************************************************/
 void ClearCharacter(BYTE line, BYTE pos)
 {
 	/* Check if the line is smaller then 2 and the position smaller then 17 */
 	if(!(line > 2 || pos > 16))
 	{
+		/* Line 1 is address 0x00 till 0x27 */
+		/* Line 2 is address 0x40 till  0x67 */
 		/* Set line mask, bit 6 is 0 for line 1 and 1 for line 2 */
 		BYTE address = (line-1) << 6;
 		
@@ -84,19 +108,20 @@ void ClearCharacter(BYTE line, BYTE pos)
 		WriteDataReg(CLEAR_CHAR);
 	}
 }
+
+/***************************************************************************
+*  Function:		WriteNewLine(char* string, BYTE line)
+*  Description:		Writes the given string to the given line, 
+				the function first clears the 16 characters of the line
+*  Receives:		char* string			:	Pointer to the string to write
+				BYTE line				:	The line to write to.
+*  Returns:		Nothing
+***************************************************************************/
 void WriteNewLine(char* string, BYTE line)
 {
-	char string[5] = {'H','E','L','L','O'};
-	ClearDisplay();
-	ReturnHome();
-	_delay_ms(1000);
-	
-	for(int i = 0; i< sizeof(string); i++)
-	{
-		WriteDataReg(string[i]);
-		_delay_us(50);
-	}
+	WriteToPosition(string, line, 0, 16);
 }
+
 /***************************************************************************
 *  Function:		InitializeLcd(BYTE* dataregister,
 						   BYTE* rsPort,
@@ -190,6 +215,9 @@ void WriteLcd(BYTE dataToWrite, RegType regType)
 		
 		/* Reset to reading */
 		SET_BIT(lcd.rw.port, lcd.rw.pin);
+		
+		/* TODO remove, replace with call to IsBusy */
+		_delay_ms(10);
 	}
 }
 
@@ -472,7 +500,7 @@ BOOL IsBusy(void)
 	BOOL isBusy = TRUE;
 	
 	/* Check if bit 7 is 0, then we return FALSE */
-	if((data >> 7) & 0x01 == 0)
+	if(((data >> 7) & 0x01) == 0)
 		isBusy = FALSE; 
 		
 	return isBusy;
