@@ -10,12 +10,18 @@
  * Version:		1.0	
  * Author:		Marcel van der Ven
  *
- * Release notes:	1.0 - Initial Release
+ * Release notes:	Oct. 10, 2015:	1.0 - Initial Release
  *
  * Note(s):
  *--------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-#define F_CPU	16000000UL
+/************************************************************************/
+/* Defines				                                                                  */
+/************************************************************************/
+#define F_CPU			16000000UL
+#define CLEAR_LCD		0b00000001
+#define RETURN_HOME		0b00000010
+#define CLEAR_CHAR		0x20
 
 /************************************************************************/
 /* Includes				                                                                  */
@@ -24,12 +30,6 @@
 #include "util/delay.h"
 #include "lcd16x2.h"
 #include "string.h"
-/************************************************************************/
-/* Defines				                                                                  */
-/************************************************************************/
-#define CLEAR_LCD		0b00000001
-#define RETURN_HOME		0b00000010
-#define CLEAR_CHAR		0x20
 
 
 /************************************************************************/
@@ -43,7 +43,12 @@ struct Lcd16x2
 	struct ControlPin rs;
 	struct ControlPin rw;
 	struct ControlPin enable;
+	
+	/* Specifies if the LCD structure is initialized, it can only be used when its initialized */
 	BOOL initialized;
+	
+	/* Specifies if setup of the LCD is completed (this happens after FunctionSet is called) */
+	/* Afterwards we can poll the BusyFlag */
 	BOOL setupCompleted;
 } lcd;
 
@@ -52,19 +57,29 @@ struct Lcd16x2
 /* Functions				                                                                  */
 /************************************************************************/	
 
-void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE fieldsToClear)
+/***************************************************************************
+*  Function:		WriteToPosition(char* string, BYTE line, BYTE pos, BYTE posistionsToClear)
+*  Description:		Writes at the given line to the given position the given string, the number of posistionsToClear
+				will first be cleared before writing.
+*  Receives:		char* string		:	Pointer to the string to write
+				BYTE line			:	The line to write to.
+				BYTE pos			:	The position on the line (zero-based)
+				BYTE posistionsToClear:	Number of characters positions to clear from position onwards.
+*  Returns:		Nothing
+***************************************************************************/
+void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE posistionsToClear)
 {
 	int length = strlen(string);
 	
 	/* Check if the line is smaller then 2 and the position smaller then 17 */
 	if(!(line > 2 || pos > 16))
 	{
-		/* Check if we can write to the position, we dont use shift so maximum length of a line is 16 */
+		/* Check if we can write to the position, we don't use shift so maximum length of a line is 16 */
 		/* If we want to write to position 10 then we can write 7 characters, so the string should not be greater then 7 characters */
 		if(length <= (16 - pos))
 		{
-			/* First clear the characters, from position till number of fieldsToClear */
-			for(int i = pos; i < (pos + fieldsToClear); i++)
+			/* First clear the characters, from position till number of posistionsToClear */
+			for(int i = pos; i < (pos + posistionsToClear); i++)
 			{
 				ClearCharacter(line, i);	
 			}
@@ -81,7 +96,6 @@ void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE fieldsToClear)
 			{
 				WriteDataReg(string[i]);
 			}
-
 		}
 	}
 }
@@ -129,12 +143,14 @@ void WriteNewLine(char* string, BYTE line)
 }
 
 /***************************************************************************
-*  Function:		InitializeLcd(BYTE* dataregister,
-						   BYTE* rsPort,
+*  Function:		InitializeLcd(volatile BYTE* dataregister,
+						   volatile BYTE* directionregister,
+						   volatile BYTE* inputregister,
+						   volatile BYTE* rsPort,
 						   BYTE rsPin,
-						   BYTE* rwPort,
+						   volatile BYTE* rwPort,
 						   BYTE rwPin,
-						   BYTE* enablePort,
+						   volatile BYTE* enablePort,
 						   BYTE enablePin)
 *  Description:		Initializes the LCD structure with the given register addresses and port numbers.
 				After that the LCD API can be used without specifying addresses or pin numbers.
@@ -184,7 +200,7 @@ void InitializeLcd(volatile BYTE* dataregister,
 *  Function:		WriteLcd(BYTE dataToWrite, RegType regType)
 *  Description:		Writes the given byte to the instruction register.
 *  Receives:		BYTE dataToWrite			:	Byte to write.
-				RegisterType registerType	:	Type of register to write to.
+				RegisterType regType		:	Type of register to write to.
 *  Returns:		Nothing
 ***************************************************************************/
 void WriteLcd(BYTE dataToWrite, RegType regType)
@@ -333,7 +349,7 @@ BYTE ReadDataReg(BYTE address)
 
 /***************************************************************************
 *  Function:		ClearDisplay()
-*  Description:		Cleares the display.
+*  Description:		Clears the display.
 *  Receives:		Nothing
 *  Returns:		Nothing
 ***************************************************************************/
@@ -376,7 +392,7 @@ void SetEntryMode(CursorDirection direction, BOOL shift)
 }
 
 /***************************************************************************
-*  Function:		DisplayOnOffControl()
+*  Function:		DisplayOnOffControl(BOOL displayOn, BOOL cursorOn, BOOL blinkOn)
 *  Description:		Controls if the display needs to be set on, the cursor need to be on 
 				and if the cursor should blink.
 *  Receives:		BOOL displayOn	:	True when the display should be set ON
@@ -400,7 +416,7 @@ void DisplayOnOffControl(BOOL displayOn, BOOL cursorOn, BOOL blinkOn)
 }
 
 /***************************************************************************
-*  Function:		CursorShift()
+*  Function:		CursorShift(Direction cursorDirection, Direction displayDirection)
 *  Description:		Shifts the cursor and or display, without changing the DDRAM data.
 *  Receives:		Direction	cursorDirection	:	The direction the cursor should shift (left or right)
 				Direction displayDirection	:	The direction the display should shift (left or right)
@@ -506,7 +522,7 @@ BYTE ReadAddressCounter(void)
 *  Function:		IsBusy()
 *  Description:		Reads the busy flag, ignores the Address Counter value.
 *  Receives:		Nothing
-*  Returns:		Address counter address.
+*  Returns:		Boolean indicating the state of the busy flag (True == Busy).
 ***************************************************************************/
 BOOL IsBusy(void)
 {
