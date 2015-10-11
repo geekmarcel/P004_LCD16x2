@@ -40,13 +40,14 @@ typedef enum{FONT5x8, FONT5x10} Font;
 /************************************************************************/
 /* API					                                                                  */
 /************************************************************************/
-void InitializeLcd(BYTE* dataregister,
-				   BYTE* directionregister,
-				   BYTE* rsPort,
+void InitializeLcd(volatile BYTE* dataregister,
+				   volatile BYTE* directionregister,
+				   volatile BYTE* inputregister,
+				   volatile BYTE* rsPort,
 				   BYTE rsPin,
-				   BYTE* rwPort,
+				   volatile BYTE* rwPort,
 				   BYTE rwPin,
-				   BYTE* enablePort,
+				   volatile BYTE* enablePort,
 				   BYTE enablePin);
 
 void WriteNewLine(char* string, BYTE line);

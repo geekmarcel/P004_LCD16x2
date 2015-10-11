@@ -15,6 +15,8 @@
  * Note(s):
  *--------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
+#define F_CPU	16000000UL
+
 /************************************************************************/
 /* Includes				                                                                  */
 /************************************************************************/
@@ -37,10 +39,12 @@ struct Lcd16x2
 {	
 	volatile uint8_t* dataregister;
 	volatile uint8_t* directionregister;
+	volatile uint8_t* inputregister;
 	struct ControlPin rs;
 	struct ControlPin rw;
 	struct ControlPin enable;
 	BOOL initialized;
+	BOOL setupCompleted;
 } lcd;
 
 
@@ -50,17 +54,19 @@ struct Lcd16x2
 
 void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE fieldsToClear)
 {
+	int length = strlen(string);
+	
 	/* Check if the line is smaller then 2 and the position smaller then 17 */
 	if(!(line > 2 || pos > 16))
 	{
 		/* Check if we can write to the position, we dont use shift so maximum length of a line is 16 */
 		/* If we want to write to position 10 then we can write 7 characters, so the string should not be greater then 7 characters */
-		if((16 - pos + 1) < sizeof(string))
+		if(length <= (16 - pos))
 		{
 			/* First clear the characters, from position till number of fieldsToClear */
-			for(int i = pos; pos < (pos + fieldsToClear); pos++)
+			for(int i = pos; i < (pos + fieldsToClear); i++)
 			{
-				ClearCharacter(line, pos + i);	
+				ClearCharacter(line, i);	
 			}
 			
 			/* Calculate start address */
@@ -71,7 +77,7 @@ void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE fieldsToClear)
 			SetDisplayDataAddress(address);
 			
 			/* Write characters */
-			for(int i = 0; i < strlen(string); i++)
+			for(int i = 0; i < length; i++)
 			{
 				WriteDataReg(string[i]);
 			}
@@ -133,6 +139,8 @@ void WriteNewLine(char* string, BYTE line)
 *  Description:		Initializes the LCD structure with the given register addresses and port numbers.
 				After that the LCD API can be used without specifying addresses or pin numbers.
 *  Receives:		BYTE* dataregister		:	Dataregister port address (8-bit
+				BYTE* directionregister	:	Data direction register
+				BYTE* inputregister		:	Input register
 				BYTE* rsPort			:	RS port address			
 				BYTE rsPin,			:	RS pin number	
 				BYTE* rwPort			:	RW port address
@@ -141,17 +149,19 @@ void WriteNewLine(char* string, BYTE line)
 				BYTE enablePin			:	Enable pin number
 *  Returns:		Nothing
 ***************************************************************************/
-void InitializeLcd(BYTE* dataregister, 
-				   BYTE* directionregister, 	
-				   BYTE* rsPort, 
+void InitializeLcd(volatile BYTE* dataregister, 
+				   volatile BYTE* directionregister, 	
+				   volatile BYTE* inputregister,
+				   volatile BYTE* rsPort, 
 				   BYTE rsPin,
-				   BYTE* rwPort,
+				   volatile BYTE* rwPort,
 				   BYTE rwPin,
-				   BYTE* enablePort,
+				   volatile BYTE* enablePort,
 				   BYTE enablePin)
 {
 	lcd.dataregister = dataregister;
 	lcd.directionregister = directionregister;
+	lcd.inputregister = inputregister;
 	lcd.rs.port = rsPort;
 	lcd.rs.pin = rsPin;
 	lcd.rw.port = rwPort;
@@ -181,6 +191,8 @@ void WriteLcd(BYTE dataToWrite, RegType regType)
 {
 	if(lcd.initialized)
 	{
+		while(IsBusy() && lcd.setupCompleted);
+		
 		/* Set the port as output */
 		*lcd.directionregister = 0b11111111;
 		
@@ -216,8 +228,7 @@ void WriteLcd(BYTE dataToWrite, RegType regType)
 		/* Reset to reading */
 		SET_BIT(lcd.rw.port, lcd.rw.pin);
 		
-		/* TODO remove, replace with call to IsBusy */
-		_delay_ms(10);
+		//_delay_ms(10);
 	}
 }
 
@@ -280,8 +291,8 @@ BYTE ReadLcd(RegType regType)
 		_delay_us(1);
 		
 		/* Read data */
-		dataRead = *lcd.dataregister;
-	
+		dataRead = *lcd.inputregister;
+		
 		/* Disable LCD */
 		CLEAR_BIT(lcd.enable.port, lcd.enable.pin);
 	
@@ -432,6 +443,9 @@ void FunctionSet(DataLength length, Lines lines, Font font)
 		dataToWrite |= 0b00000100;
 		
 	WriteInstructionReg(dataToWrite);
+	
+	/* Set setup to complete, after this function we can use the BusyFlag */
+	lcd.setupCompleted = TRUE;
 }
 
 /***************************************************************************
@@ -447,7 +461,7 @@ void SetCharacterGeneratorAddress(BYTE address)
 	BYTE dataToWrite = 0b01000000;
 	
 	/* Set address, mask out bits 6 and 7 of the address (the address is only 6 bits) */
-	dataToWrite |= (address && 0b00111111);
+	dataToWrite |= (address & 0b00111111);
 	
 	WriteInstructionReg(dataToWrite);
 }
@@ -469,7 +483,7 @@ void SetDisplayDataAddress(BYTE address)
 	BYTE dataToWrite = 0b10000000;
 	
 	/* Set address, mask out bit 7 of the address (the address is only 7 bits) */
-	dataToWrite |= (address && 0b01111111);
+	dataToWrite |= (address & 0b01111111);
 	
 	WriteInstructionReg(dataToWrite);
 }
@@ -483,7 +497,7 @@ void SetDisplayDataAddress(BYTE address)
 BYTE ReadAddressCounter(void)
 {
 	/* Read address and ignore bit 7 by masking it out */
-	BYTE address = ReadInstructionReg() && 0x7F;
+	BYTE address = ReadInstructionReg() & 0x7F;
 	
 	return address;
 }
@@ -502,6 +516,8 @@ BOOL IsBusy(void)
 	/* Check if bit 7 is 0, then we return FALSE */
 	if(((data >> 7) & 0x01) == 0)
 		isBusy = FALSE; 
+	
+	_delay_ms(1);
 		
 	return isBusy;
 }

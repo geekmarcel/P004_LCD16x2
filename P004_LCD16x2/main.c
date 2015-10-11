@@ -14,6 +14,8 @@
  * Note(s):
  *--------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
+#define F_CPU	16000000UL
+
 /************************************************************************/
 /* Includes				                                                                  */
 /************************************************************************/
@@ -57,6 +59,7 @@ int main(void)
 	InitializeLcd(
 		&PORTD, 
 		&DDRD,
+		&PIND,
 		&PORTB,
 		PORTB0 + 1,
 		&PORTB,
@@ -69,36 +72,38 @@ int main(void)
 	
 	/* Startup routine, mandatory sequence with delays (see datasheet) */
 	FunctionSet(EIGHT_BIT, TWO_LINES, FONT5x8);
-	_delay_ms(5);
-	FunctionSet(EIGHT_BIT, TWO_LINES, FONT5x8);
-	_delay_us(100);
+	//_delay_ms(5);
+	//FunctionSet(EIGHT_BIT, TWO_LINES, FONT5x8);
+	//_delay_us(100);
 	
 	/* Setup display */
 	DisplayOnOffControl(TRUE, TRUE, TRUE);
 	SetEntryMode(INCREMENT, FALSE);
+	ClearDisplay();
+	ReturnHome();
 
+	char str1[] = {"This is a test 1"};
+	char str2[] = {"This is a test 2"};
 	/* Test writing string first line */
-	WriteNewLine("Dit is een test1", LINE1);
-	_delay_ms(2000);
-	WriteNewLine("Dit is een test2", LINE2);
-	_delay_ms(2000);
-	
-	WriteNewLine("Test2 Line 1", LINE1);
-	_delay_ms(2000);
-	WriteNewLine("Test2 Line 2", LINE2);
-	_delay_ms(2000);
-	
-	WriteNewLine("Temp: 25 deg.", LINE1);
-	_delay_ms(500);
-	WriteToPosition("35 deg.", LINE1, 6, 7);
-	_delay_ms(500);
-	WriteToPosition("45 deg.", LINE1, 6, 7);
-	_delay_ms(500);
-	WriteToPosition("5 deg.", LINE1, 6, 7);
-	_delay_ms(500);
-	WriteToPosition("-1 deg.", LINE1, 6, 7);
-	_delay_ms(500);
-	WriteToPosition("99 deg.", LINE1, 6, 7);
+	WriteNewLine(str1, LINE1);
+	_delay_ms(1000);
+	WriteNewLine(str2, LINE2);
+	_delay_ms(1000);
+
+	ClearDisplay();
+	DisplayOnOffControl(TRUE, FALSE, FALSE);
+	char str3[] = {"Temp: 25 deg."};
+	char str4[] = {"35 deg."};
+	char str5[] = {"45 deg."};
+	char str6[] = {"5 deg."};		
+	WriteNewLine(str3, LINE1);
+	_delay_ms(1000);
+	WriteToPosition(str4, LINE1, 6, 7);
+	_delay_ms(1000);
+	WriteToPosition(str5, LINE1, 6, 7);
+	_delay_ms(1000);
+	WriteToPosition(str6, LINE1, 6, 7);
+	_delay_ms(1000);
 	
 	
     while(1)
