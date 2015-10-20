@@ -40,19 +40,18 @@ typedef enum{FONT5x8, FONT5x10} Font;
 /************************************************************************/
 /* API					                                                                  */
 /************************************************************************/
-void InitializeLcd(volatile BYTE* dataregister,
-				   volatile BYTE* directionregister,
-				   volatile BYTE* inputregister,
-				   volatile BYTE* rsPort,
+void InitializeLcd(volatile BYTE* dataOutputPortReg,
+				   volatile BYTE* dataInputPortReg,
+				   volatile BYTE* dataDirReg,
+				   volatile BYTE* controlOutputPortReg,
+				   volatile BYTE* controlInputPortReg,
 				   BYTE rsPin,
-				   volatile BYTE* rwPort,
 				   BYTE rwPin,
-				   volatile BYTE* enablePort,
 				   BYTE enablePin);
 
 void WriteNewLine(char* string, BYTE line);
 void ClearCharacter(BYTE line, BYTE pos);
-void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE fieldsToClear);
+void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE positionsToClear);
 
 /************************************************************************/
 /* Control and Display Instructions API                                                      */

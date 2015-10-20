@@ -37,12 +37,12 @@
 /************************************************************************/
 struct Lcd16x2
 {	
-	volatile uint8_t* dataregister;
-	volatile uint8_t* directionregister;
-	volatile uint8_t* inputregister;
-	struct ControlPin rs;
-	struct ControlPin rw;
-	struct ControlPin enable;
+	volatile uint8_t* dataOutputPortRegister;
+	volatile uint8_t* dataInputPortRegister;
+	volatile uint8_t* dataDirRegister;
+	struct PinSettings rs;
+	struct PinSettings rw;
+	struct PinSettings enable;
 	
 	/* Specifies if the LCD structure is initialized, it can only be used when its initialized */
 	BOOL initialized;
@@ -67,7 +67,7 @@ struct Lcd16x2
 				BYTE posistionsToClear:	Number of characters positions to clear from position onwards.
 *  Returns:		Nothing
 ***************************************************************************/
-void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE posistionsToClear)
+void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE positionsToClear)
 {
 	int length = strlen(string);
 	
@@ -79,7 +79,7 @@ void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE posistionsToClear)
 		if(length <= (16 - pos))
 		{
 			/* First clear the characters, from position till number of posistionsToClear */
-			for(int i = pos; i < (pos + posistionsToClear); i++)
+			for(int i = pos; i < (pos + positionsToClear); i++)
 			{
 				ClearCharacter(line, i);	
 			}
@@ -143,46 +143,50 @@ void WriteNewLine(char* string, BYTE line)
 }
 
 /***************************************************************************
-*  Function:		InitializeLcd(volatile BYTE* dataregister,
-						   volatile BYTE* directionregister,
-						   volatile BYTE* inputregister,
-						   volatile BYTE* rsPort,
+*  Function:		InitializeLcd(volatile BYTE* dataOutputPortReg,
+						   volatile BYTE* dataInputPortReg,
+						   volatile BYTE* dataDirReg,
+						   volatile BYTE* controlOutputPortReg,
+						   volatile BYTE* controlInputPortReg,
 						   BYTE rsPin,
-						   volatile BYTE* rwPort,
 						   BYTE rwPin,
-						   volatile BYTE* enablePort,
 						   BYTE enablePin)
 *  Description:		Initializes the LCD structure with the given register addresses and port numbers.
 				After that the LCD API can be used without specifying addresses or pin numbers.
-*  Receives:		BYTE* dataregister		:	Dataregister port address (8-bit
-				BYTE* directionregister	:	Data direction register
-				BYTE* inputregister		:	Input register
-				BYTE* rsPort			:	RS port address			
-				BYTE rsPin,			:	RS pin number	
-				BYTE* rwPort			:	RW port address
-				BYTE rwPin			:	RW pin number		
-				BYTE* enablePort		:	Enable port address	
-				BYTE enablePin			:	Enable pin number
+*  Receives:		BYTE* dataOutputPortReg	:	Dataregister output port address
+				BYTE* dataInputPortReg		:	Data input port register
+				BYTE* dataDirReg			:	Data direction register
+				BYTE* controlOutputPortReg	:	Control output port register
+				BYTE* controlInputPortReg	:	Control input port register
+				BYTE* rsPort				:	RS port address			
+				BYTE rsPin,				:	RS pin number	
+				BYTE* rwPort				:	RW port address
+				BYTE rwPin				:	RW pin number		
+				BYTE* enablePort			:	Enable port address	
+				BYTE enablePin				:	Enable pin number
 *  Returns:		Nothing
 ***************************************************************************/
-void InitializeLcd(volatile BYTE* dataregister, 
-				   volatile BYTE* directionregister, 	
-				   volatile BYTE* inputregister,
-				   volatile BYTE* rsPort, 
+void InitializeLcd(volatile BYTE* dataOutputPortReg, 
+				   volatile BYTE* dataInputPortReg, 	
+				   volatile BYTE* dataDirReg,
+				   volatile BYTE* controlOutputPortReg,
+				   volatile BYTE* controlInputPortReg,
 				   BYTE rsPin,
-				   volatile BYTE* rwPort,
 				   BYTE rwPin,
-				   volatile BYTE* enablePort,
 				   BYTE enablePin)
 {
-	lcd.dataregister = dataregister;
-	lcd.directionregister = directionregister;
-	lcd.inputregister = inputregister;
-	lcd.rs.port = rsPort;
+	lcd.dataOutputPortRegister = dataOutputPortReg;
+	lcd.dataInputPortRegister = dataInputPortReg;
+	lcd.dataDirRegister = dataDirReg;
+	
+	lcd.rs.outputPort = controlOutputPortReg;
+	lcd.rs.inputPort = controlInputPortReg;
 	lcd.rs.pin = rsPin;
-	lcd.rw.port = rwPort;
+	lcd.rw.outputPort = controlOutputPortReg;
+	lcd.rw.inputPort = controlInputPortReg;
 	lcd.rw.pin = rwPin;
-	lcd.enable.port = enablePort;
+	lcd.enable.outputPort = controlOutputPortReg;
+	lcd.enable.inputPort = controlInputPortReg;
 	lcd.enable.pin = enablePin;
 	
 	/* Set boolean to indicate LCD struct is initialized */
@@ -210,41 +214,39 @@ void WriteLcd(BYTE dataToWrite, RegType regType)
 		while(IsBusy() && lcd.setupCompleted);
 		
 		/* Set the port as output */
-		*lcd.directionregister = 0b11111111;
+		*lcd.dataDirRegister = 0b11111111;
 		
 		/* Determine register to write to */
 		if(regType == INSTRUCTION_REGISTER)
 		{
-			CLEAR_BIT(lcd.rs.port, lcd.rs.pin);
+			CLEAR_BIT(lcd.rs.outputPort, lcd.rs.inputPort, lcd.rs.pin);
 		}
 		else
 		{
-			SET_BIT(lcd.rs.port, lcd.rs.pin);			
+			SET_BIT(lcd.rs.outputPort, lcd.rs.inputPort, lcd.rs.pin);			
 		}
 		
 		/* Set to write */
-		CLEAR_BIT(lcd.rw.port, lcd.rw.pin);
+		CLEAR_BIT(lcd.rw.outputPort, lcd.rw.inputPort, lcd.rw.pin);
 		
 		/* Wait at least 40 ns (Address Setup Time tsp1) */
 		_delay_us(1);
-		SET_BIT(lcd.enable.port, lcd.enable.pin);
+		SET_BIT(lcd.enable.outputPort, lcd.enable.inputPort, lcd.enable.pin);
 		
 		/* Set data to write */
-		*lcd.dataregister = dataToWrite;
+		*lcd.dataOutputPortRegister = dataToWrite;
 		
 		/* Wait at least 230 ns (E pulse Width tpw) */
 		_delay_us(1);
 		
 		/* Disable LCD */
-		CLEAR_BIT(lcd.enable.port, lcd.enable.pin);
+		CLEAR_BIT(lcd.enable.outputPort, lcd.enable.inputPort, lcd.enable.pin);
 		
 		/* Wait at least 10 ns (Address Hold Time thd) */
 		_delay_us(1);
 		
 		/* Reset to reading */
-		SET_BIT(lcd.rw.port, lcd.rw.pin);
-		
-		//_delay_ms(10);
+		SET_BIT(lcd.rw.outputPort, lcd.rw.inputPort, lcd.rw.pin);
 	}
 }
 
@@ -284,33 +286,33 @@ BYTE ReadLcd(RegType regType)
 	if(lcd.initialized == TRUE)
 	{
 		/* First set the port as input */
-		*lcd.directionregister = 0b00000000;
+		*lcd.dataDirRegister = 0b00000000;
 	
 		/* Determine register to read from */
 		if(regType == INSTRUCTION_REGISTER)
 		{
-			CLEAR_BIT(lcd.rs.port, lcd.rs.pin);
+			CLEAR_BIT(lcd.rs.outputPort, lcd.rs.inputPort, lcd.rs.pin);
 		}
 		else
 		{
-			SET_BIT(lcd.rs.port, lcd.rs.pin);
+			SET_BIT(lcd.rs.outputPort, lcd.rs.inputPort, lcd.rs.pin);
 		}
 	
 		/* Set to read */
-		SET_BIT(lcd.rw.port, lcd.rw.pin);
+		SET_BIT(lcd.rw.outputPort, lcd.rw.inputPort, lcd.rw.pin);
 	
 		/* Wait at least 40 ns (Address Setup Time tsp1) */
 		_delay_us(1);
-		SET_BIT(lcd.enable.port, lcd.enable.pin);
+		SET_BIT(lcd.enable.outputPort, lcd.enable.inputPort, lcd.enable.pin);
 	
 		/* Wait at least 150 ns (Data output delay time td) */
 		_delay_us(1);
 		
 		/* Read data */
-		dataRead = *lcd.inputregister;
+		dataRead = *lcd.dataInputPortRegister;
 		
 		/* Disable LCD */
-		CLEAR_BIT(lcd.enable.port, lcd.enable.pin);
+		CLEAR_BIT(lcd.enable.outputPort, lcd.enable.inputPort, lcd.enable.pin);
 	
 		/* Wait at least 10 ns (Address Hold Time thd) */
 		_delay_us(1);

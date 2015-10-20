@@ -11,12 +11,18 @@
  *
  * Hardware setup:	
  *
+ * Releases:		Oct 18 2015 - 1.2:		Changed the SET and CLEAR bit-macro functions
+ *				Oct 9 2015 - 1.1:		Added High - Low defines
+ *				
+ *				Oct. 1 2015 - 1.0		Initial release
  * Note(s):
  *--------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
 #ifndef COMMON_H_
 #define COMMON_H_
+
+#include <stdint.h>
 
 /************************************************************************/
 /* Defines				                                                                  */
@@ -26,23 +32,26 @@ typedef	uint8_t		BOOL;
 
 #define TRUE		1
 #define FALSE		0
+#define HIGH		1
+#define LOW			0
 
 /************************************************************************/
 /* Structures				                                                                  */
 /************************************************************************/
-struct ControlPin
+struct PinSettings
 {
-	volatile uint8_t* port;
-	volatile uint8_t pin;
+	volatile BYTE* outputPort;
+	volatile BYTE* inputPort;
+	volatile BYTE* dirPort;
+	volatile BYTE pin;
 };
 
 
 /************************************************************************/
 /* Macros				                                                                  */
 /************************************************************************/
-#define SET_BIT(y, mask)        ( *y |=  (mask) )
-#define CLEAR_BIT(y, mask)      ( *y &= ~(mask) )
-#define FLIP_BIT(y, mask)       ( *y ^=  (mask) )
+#define SET_BIT(outputPort, inputPort, bit)       ( *outputPort =  (*inputPort | (1 << bit)) )
+#define CLEAR_BIT(outputPort, inputPort, bit)     ( *outputPort =  (*inputPort & ~(1 << bit)) )
 
 
 /************************************************************************/

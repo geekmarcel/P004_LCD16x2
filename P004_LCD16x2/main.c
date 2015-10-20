@@ -9,8 +9,10 @@
  * Date:			01-10-2015
  * Author:		Marcel van der Ven
  *
- * Hardware setup:	
- *
+ * Hardware setup:		PORTD	:	8-bit databus (pins 7 till 14 of LCD)
+ *					PORTB0	:	Register Select (pin 4 of LCD)	
+ *					PORTB1	:	Read/Write (pin 5 of LCD)
+ *					PORTB2	:	Enable (pin 6 of LCD)
  * Note(s):
  *--------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -59,11 +61,10 @@ int main(void)
 		&DDRD,
 		&PIND,
 		&PORTB,
-		PORTB0 + 1,
-		&PORTB,
-		PORTB1 + 1,
-		&PORTB,
-		PORTB2 + 2);
+		&PINB,
+		PORTB0,
+		PORTB1,
+		PORTB2);
 	
 	/* LCD Startup delay */
 	_delay_ms(20);
