@@ -55,11 +55,12 @@ void Setup()
 ***************************************************************************/
 int main(void)
 {
+	/* Setup and initialization */
 	Setup();
 	InitializeLcd(
-		&PORTD, 
-		&DDRD,
+		&PORTD,
 		&PIND,
+		&DDRD,
 		&PORTB,
 		&PINB,
 		PORTB0,
@@ -78,22 +79,31 @@ int main(void)
 	ClearDisplay();
 	ReturnHome();
 
+	/* String initialization */
 	char str1[] = {"This is a test 1"};
 	char str2[] = {"This is a test 2"};
+		
 	/* Test writing string first line */
 	WriteNewLine(str1, LINE1);
 	_delay_ms(1000);
 	WriteNewLine(str2, LINE2);
 	_delay_ms(1000);
-
-	ClearDisplay();
+	
+	/* Clear display for new text */
+	ClearDisplay();	
 	DisplayOnOffControl(TRUE, FALSE, FALSE);
+	
+	/* String initialization */
 	char str3[] = {"Temp: 25 deg."};
 	char str4[] = {"35 deg."};
 	char str5[] = {"45 deg."};
-	char str6[] = {"5 deg."};		
+	char str6[] = {"5 deg."};	
+		
+	/* Write temperature text */	
 	WriteNewLine(str3, LINE1);
 	_delay_ms(1000);
+	
+	/* Replace only the temperature-text with a new value */
 	WriteToPosition(str4, LINE1, 6, 7);
 	_delay_ms(1000);
 	WriteToPosition(str5, LINE1, 6, 7);
@@ -102,7 +112,7 @@ int main(void)
 	_delay_ms(1000);
 	
 	
-    while(1)
-    {	
-    }
+	while(1)
+	{
+	}
 }

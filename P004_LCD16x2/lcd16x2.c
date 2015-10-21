@@ -157,12 +157,9 @@ void WriteNewLine(char* string, BYTE line)
 				BYTE* dataInputPortReg		:	Data input port register
 				BYTE* dataDirReg			:	Data direction register
 				BYTE* controlOutputPortReg	:	Control output port register
-				BYTE* controlInputPortReg	:	Control input port register
-				BYTE* rsPort				:	RS port address			
+				BYTE* controlInputPortReg	:	Control input port register			
 				BYTE rsPin,				:	RS pin number	
-				BYTE* rwPort				:	RW port address
 				BYTE rwPin				:	RW pin number		
-				BYTE* enablePort			:	Enable port address	
 				BYTE enablePin				:	Enable pin number
 *  Returns:		Nothing
 ***************************************************************************/
@@ -204,7 +201,7 @@ void InitializeLcd(volatile BYTE* dataOutputPortReg,
 *  Function:		WriteLcd(BYTE dataToWrite, RegType regType)
 *  Description:		Writes the given byte to the instruction register.
 *  Receives:		BYTE dataToWrite			:	Byte to write.
-				RegisterType regType		:	Type of register to write to.
+				RegType regType			:	Type of register to write to.
 *  Returns:		Nothing
 ***************************************************************************/
 void WriteLcd(BYTE dataToWrite, RegType regType)
@@ -277,7 +274,7 @@ void WriteDataReg(BYTE dataToWrite)
 *  Description:		Reads the LCD display instruction or data register, in the later
 				case the calling function should first set the address to read. 
 *  Receives:		RegType regType	:	Type of register to read from.
-*  Returns:		Nothing
+*  Returns:		The byte that was read.
 ***************************************************************************/
 BYTE ReadLcd(RegType regType)
 {
@@ -325,7 +322,7 @@ BYTE ReadLcd(RegType regType)
 *  Function:		ReadInstructionReg()
 *  Description:		Reads the instruction register.
 *  Receives:		Nothing
-*  Returns:		The byte that is read.
+*  Returns:		The byte that was read.
 ***************************************************************************/
 BYTE ReadInstructionReg(void)
 {
@@ -334,10 +331,10 @@ BYTE ReadInstructionReg(void)
 }
 
 /***************************************************************************
-*  Function:		ReadDataReg()
+*  Function:		ReadDataReg(BYTE address)
 *  Description:		Reads the data register from the given address.
 *  Receives:		BYTE address		:	Address to read from.
-*  Returns:		The byte that is read.
+*  Returns:		The byte that was read.
 ***************************************************************************/
 BYTE ReadDataReg(BYTE address)
 {
@@ -372,7 +369,7 @@ void ReturnHome(void)
 }
 
 /***************************************************************************
-*  Function:		SetEntryMode()
+*  Function:		SetEntryMode(CursorDirection direction, BOOL shift)
 *  Description:		Sets the entry mode, by setting the direction the cursor moves
 				and if the display shifts this is used when writing or reading data from the LCD.
 *  Receives:		CursorDirection direction	:	The direction of the cursor (Increment or Decrement)

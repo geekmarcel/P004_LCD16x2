@@ -4,7 +4,7 @@
  * Micro:			ATMEGA328P
  * IDE:			Atmel Studio 6.2
  *
- * Name:    		lcd16x2.c
+ * Name:    		lcd16x2.h
  * Purpose: 		LCD 16x2 Library Header
  * Date:			01-10-2015
  * Author:		Marcel van der Ven
