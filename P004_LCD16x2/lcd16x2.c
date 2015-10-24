@@ -47,7 +47,7 @@ struct Lcd16x2
 	/* Specifies if the LCD structure is initialized, it can only be used when its initialized */
 	BOOL initialized;
 	
-	/* Specifies if setup of the LCD is completed (this happens after FunctionSet is called) */
+	/* Specifies if the setup-phase of the LCD is completed (this happens after FunctionSet is called) */
 	/* Afterwards we can poll the BusyFlag */
 	BOOL setupCompleted;
 } lcd;
@@ -64,7 +64,7 @@ struct Lcd16x2
 *  Receives:		char* string		:	Pointer to the string to write
 				BYTE line			:	The line to write to.
 				BYTE pos			:	The position on the line (zero-based)
-				BYTE posistionsToClear:	Number of characters positions to clear from position onwards.
+				BYTE positionsToClear:	Number of characters positions to clear from position onwards.
 *  Returns:		Nothing
 ***************************************************************************/
 void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE positionsToClear)
@@ -78,7 +78,7 @@ void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE positionsToClear)
 		/* If we want to write to position 10 then we can write 7 characters, so the string should not be greater then 7 characters */
 		if(length <= (16 - pos))
 		{
-			/* First clear the characters, from position till number of posistionsToClear */
+			/* First clear the characters, from position till number of positionsToClear */
 			for(int i = pos; i < (pos + positionsToClear); i++)
 			{
 				ClearCharacter(line, i);	
@@ -103,7 +103,7 @@ void WriteToPosition(char* string, BYTE line, BYTE pos, BYTE positionsToClear)
 /***************************************************************************
 *  Function:		ClearCharacter(BYTE line, BYTE pos)
 *  Description:		Clears the character on the given line and position.
-				This is done by writing 0x20 to the character.
+				This is done by writing 0x20 as character.
 *  Receives:		BYTE line			:	The line to write to.
 				BYTE pos			:	The position on the line (zero-based)
 *  Returns:		Nothing
@@ -208,7 +208,9 @@ void WriteLcd(BYTE dataToWrite, RegType regType)
 {
 	if(lcd.initialized)
 	{
-		while(IsBusy() && lcd.setupCompleted);
+		/* If we didnt finish setup yet, then skip because we cant call IsBusy before the setup is completed */
+		/* If setup is completed, then wait if the LCD is still busy */
+		while(lcd.setupCompleted && IsBusy());
 		
 		/* Set the port as output */
 		*lcd.dataDirRegister = 0b11111111;
@@ -282,6 +284,10 @@ BYTE ReadLcd(RegType regType)
 	
 	if(lcd.initialized == TRUE)
 	{
+		/* If we didnt finish setup yet, then skip because we cant call IsBusy before the setup is completed */
+		/* If setup is completed, then wait if the LCD is still busy */
+		while(lcd.setupCompleted && IsBusy());
+		
 		/* First set the port as input */
 		*lcd.dataDirRegister = 0b00000000;
 	
@@ -404,11 +410,11 @@ void DisplayOnOffControl(BOOL displayOn, BOOL cursorOn, BOOL blinkOn)
 	/* Create data byte */
 	BYTE dataToWrite = 0b00001000;
 	
-	if(displayOn != 0)
+	if(displayOn == TRUE)
 		dataToWrite |= 0b00000100;
-	if(cursorOn != 0)
+	if(cursorOn == TRUE)
 		dataToWrite |= 0b00000010;
-	if(blinkOn != 0)
+	if(blinkOn == TRUE)
 		dataToWrite |= 0b00000001;
 
 	WriteInstructionReg(dataToWrite);
@@ -416,7 +422,7 @@ void DisplayOnOffControl(BOOL displayOn, BOOL cursorOn, BOOL blinkOn)
 
 /***************************************************************************
 *  Function:		CursorShift(Direction cursorDirection, Direction displayDirection)
-*  Description:		Shifts the cursor and or display, without changing the DDRAM data.
+*  Description:		Shifts the cursor and or display left or right, without changing the DDRAM data.
 *  Receives:		Direction	cursorDirection	:	The direction the cursor should shift (left or right)
 				Direction displayDirection	:	The direction the display should shift (left or right)
 *  Returns:		Nothing

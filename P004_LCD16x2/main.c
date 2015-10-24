@@ -30,9 +30,8 @@
 #include "common.h"
 
 /***************************************************************************
-*  Function:		Setup(int number)
-*  Description:		Setup PORTD and the timer, this function need to be called at
-*				the beginning of main.
+*  Function:		Setup()
+*  Description:		Setup PORTD, this function need to be called at the beginning of main.
 *  Receives:		Nothing
 *  Returns:		Nothing
 ***************************************************************************/
