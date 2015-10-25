@@ -210,7 +210,7 @@ void WriteLcd(BYTE dataToWrite, RegType regType)
 	{
 		/* If we didnt finish setup yet, then skip because we cant call IsBusy before the setup is completed */
 		/* If setup is completed, then wait if the LCD is still busy */
-		while(lcd.setupCompleted && IsBusy());
+		while(lcd.setupCompleted == TRUE && IsBusy());
 		
 		/* Set the port as output */
 		*lcd.dataDirRegister = 0b11111111;
@@ -284,10 +284,6 @@ BYTE ReadLcd(RegType regType)
 	
 	if(lcd.initialized == TRUE)
 	{
-		/* If we didnt finish setup yet, then skip because we cant call IsBusy before the setup is completed */
-		/* If setup is completed, then wait if the LCD is still busy */
-		while(lcd.setupCompleted && IsBusy());
-		
 		/* First set the port as input */
 		*lcd.dataDirRegister = 0b00000000;
 	
